@@ -1,5 +1,4 @@
 import { assert } from 'chai';
-import flowright from 'lodash.flowRight';
 import warewolf, { mergerware } from '../src/index';
 
 describe('warewolf.', () => {
