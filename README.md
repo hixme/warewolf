@@ -1,5 +1,5 @@
 # Warewolf [![Build Status](https://travis-ci.org/hixme/warewolf.svg?branch=master)](https://travis-ci.org/hixme/warewolf)
-:page_with_curl: Savage Async Middleware.
+Savage Async Middleware.
 
 Connect style middleware with promise support. 
 
