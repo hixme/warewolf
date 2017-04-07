@@ -89,7 +89,7 @@ const handler = warewolf(
     // middleware
     return new Promise(resolve => setImmediate(resolve));
   },
-  (arg1, arg2, done) => {
+  (arg1, arg2) => {
     // after all middleware has been called
     return new Promise(resolve => resolve('Success'));
   }
