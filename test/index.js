@@ -73,17 +73,56 @@ describe('warewolf.', () => {
   });
 
   it('should exit on error', () => {
-    let item = [];
-
     const ware = warewolf(
       [
         (next) => {
-          item.push(1);
           next('error');
         },
         (next) => {
           assert.fail('Should not resolve');
           next();
+        },
+      ]
+    );
+    ware(err => assert.isOk(err === 'error', 'Error not equal'));
+  });
+
+  it('should exit on throw', () => {
+    const ware = warewolf(
+      [
+        () => {
+          throw 'error';
+        },
+        (next) => {
+          assert.fail('Should not resolve');
+          next();
+        },
+      ]
+    );
+    ware(err => assert.isOk(err === 'error', 'Error not equal'));
+  });
+
+  it('should not stack overflow', done => {
+
+    const ware = warewolf(
+      [
+        (next) => {
+          next();
+        },
+      ]
+    );
+    assert.throws(() => ware(() => {
+      done();
+      throw 'error';
+    }));
+
+  });
+
+  it('should throw on final ware throw', () => {
+    const ware = warewolf(
+      [
+        () => {
+          throw 'error';
         },
       ]
     );

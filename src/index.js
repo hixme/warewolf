@@ -30,9 +30,10 @@ export function mergerware(merger, initial = {}) {
     // this is the actual warewolf() call
     const argStack = normalizeArgumentArray(middleware);
     let hasCallback = true;
+    let isDone = false;
     return (...invocationArguments) => {
       // some assumptions here about how warewolf is called
-      // if callback is provided, that's subbed with next()
+      // if callback is provided, that's subbed with next() in middleware
       // if no callback, we treat it like a promise
       let done = invocationArguments.pop();
       if (!isFunction(done)) {
@@ -64,6 +65,7 @@ export function mergerware(merger, initial = {}) {
                 } else {
                   resolve(result[0]);
                 }
+                isDone = true;
                 return done(err, ...result);
               }
               if (merger !== undefined) {
@@ -82,7 +84,12 @@ export function mergerware(merger, initial = {}) {
           wrappedMiddlewareStep(stack.shift());
         } catch (err) {
           if (hasCallback) {
-            throw err;
+            if (!isDone) {
+              // want to avoid stack overflow
+              done(err);
+            } else {
+              throw err;
+            }
           } else {
             reject(err);
           }

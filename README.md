@@ -29,12 +29,39 @@ const handler = warewolf(
   },
   (arg1, arg2, done) => {
     // after all middleware has been called
+    done(null, 'success');
+  }
+);
+
+handler(1, 2, console.log);
+// prints [null, 'success']
+
+```
+
+## Errors
+
+Just like connect, we'll stop iteration if next receives a value or if an error is thrown.
+
+```js
+import warewolf from 'warewolf';
+
+const handler = warewolf(
+  (arg1, arg2, next) => {
+    // middleware
+    next('error');
+  },
+  (arg1, arg2, next) => {
+    // middleware
+    next();
+  },
+  (arg1, arg2, done) => {
+    // after all middleware has been called
     done('success');
   }
 );
 
 handler(1, 2, console.log);
-// prints 'Success'
+// prints 'error'
 
 ```
 
@@ -66,11 +93,11 @@ const ware2 = warewolf(
 );
 
 const handler = warewolf(ware2, ware1, (arg1, arg2, done) => {
-  done('Success');
+  done(null, 'success');
 }));
 
 handler(1, 2, console.log);
-// prints 'Success'
+// prints [null, 'success']
 ```
 
 ## Promises
@@ -91,12 +118,12 @@ const handler = warewolf(
   },
   (arg1, arg2) => {
     // after all middleware has been called
-    return new Promise(resolve => resolve('Success'));
+    return new Promise(resolve => resolve('success'));
   }
 );
 
-handler(1, 2, console.log);
-// prints 'Success'
+handler(1, 2).then(console.log);
+// prints 'success'
 
 ```
 
@@ -129,13 +156,13 @@ const handler = addcomposer(
 );
 
 handler(1, console.log);
-// prints 20
+// prints [null, 20]
 
 ```
 
 # Gotchas
 
-## Arg count
+## Middleware Arity
 
 Whatever you final handler accepts as arguments will be the number of arguments passed to your middleware, so it needs to be uniform!
 
