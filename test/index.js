@@ -72,25 +72,45 @@ describe('warewolf.', () => {
     assert.deepEqual(item, compare, 'Item not equal');
   });
 
-  it('should be asynchronous', () => {
-    (function () {
+  it('should exit on error', () => {
+    let item = [];
+
+    const ware = warewolf(
+      [
+        (next) => {
+          item.push(1);
+          next('error');
+        },
+        (next) => {
+          assert.fail('Should not resolve');
+          next();
+        },
+      ]
+    );
+    ware(err => assert.isOk(err === 'error', 'Error not equal'));
+  });
+
+  describe('asynchronous', () => {
+    it('should iterate', done => {
       function next(next) {
         setTimeout(next, 1);
       }
-
+      let to;
       const ware = warewolf(
         next,
         next,
         next,
         () => {
           assert.isOk(true);
+          clearTimeout(to);
+          done();
         }
       );
       ware();
-      setTimeout(() => assert.fail('Timed out'), 10);
-    })();
+      to = setTimeout(() => assert.fail('Timed out'), 10);
+    });
 
-    (function () {
+    it('should handle iteration freeze', done => {
       function next(req, res, next) {
 
       }
@@ -104,29 +124,86 @@ describe('warewolf.', () => {
         }
       );
       ware();
-      setTimeout(() => assert.isOk(true), 10);
-    })();
+      setTimeout(() => {
+        assert.isOk(true);
+        done();
+      }, 10);
+    });
   });
 
-  it('should support promises', () => {
-    (function () {
+  describe('promises', () => {
+    it('should support resolvers', done => {
+        let to;
+        function next() {
+          return new Promise(resolve => setTimeout(resolve, 1));
+        }
+
+        const ware = warewolf(
+          next,
+          next,
+          next,
+          () => {
+            assert.isOk(true);
+            clearTimeout(to);
+            done();
+          }
+        );
+        ware();
+        to = setTimeout(() => assert.fail('Timed out'), 10);
+
+    });
+
+    it('should support root resolvers', done => {
       function next() {
         return new Promise(resolve => setTimeout(resolve, 1));
       }
-
+      let to;
       const ware = warewolf(
         next,
         next,
         next,
-        () => {
-          assert.isOk(true);
-        }
       );
-      ware();
-      setTimeout(() => assert.fail('Timed out'), 10);
-    })();
+      ware().then(() => {
+        assert.isOk(true);
+        clearTimeout(to);
+        done();
+      });
+      to = setTimeout(() => assert.fail('Timed out'), 10);
+    });
 
-    (function () {
+    it('should support errors', done => {
+      function next(cb) {
+        return cb('error');
+      }
+      let to;
+      const ware = warewolf(
+        next,
+      );
+      ware().catch((err) => {
+        assert.isOk(err === 'error');
+        clearTimeout(to);
+        done();
+      });
+      to = setTimeout(() => assert.fail('Timed out'), 10);
+    });
+
+    it('should support throws', done => {
+      function next(cb) {
+        throw 'error';
+      }
+      let to;
+      const ware = warewolf(
+        next,
+      );
+      ware().catch((err) => {
+        assert.isOk(err === 'error');
+        clearTimeout(to);
+        done();
+      });
+      to = setTimeout(() => assert.fail('Timed out'), 10);
+    });
+
+    it('should not resolve', done => {
       function next(req, res, next) {
 
       }
@@ -140,8 +217,11 @@ describe('warewolf.', () => {
         }
       );
       ware();
-      setTimeout(() => assert.isOk(true), 10);
-    })();
+      setTimeout(() => {
+        assert.isOk(true);
+        done();
+      }, 10);
+    });
   });
 
   it('should pipe a mutable object', () => {
@@ -267,10 +347,10 @@ describe('warewolf.', () => {
         },
       ],
        (_req, res, done) => {
-         done(compare, compare2);
+         done(null, compare, compare2);
        }
     );
-    ware(req, res, (_compare, _compare2) => {
+    ware(req, res, (err, _compare, _compare2) => {
       assert.deepEqual(_compare, compare, 'Done not equal');
       assert.deepEqual(_compare2, compare2, 'Done2 not equal');
     });
@@ -284,12 +364,12 @@ describe('warewolf.', () => {
     const ware = mergerware(Object.assign)(
 
       (next) => {
-        next({
+        next(null, {
           item1: 'hello'
         });
       },
       (next) => {
-        next({
+        next(null, {
           item2: 'world'
         });
       },

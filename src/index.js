@@ -25,42 +25,69 @@ function isPromise(obj) {
 }
 
 export function mergerware(merger, initial = {}) {
+  // high level - returns a function that can merge results
   return function middle(...middleware) {
+    // this is the actual warewolf() call
     const argStack = normalizeArgumentArray(middleware);
+    let hasCallback = true;
     return (...invocationArguments) => {
+      // some assumptions here about how warewolf is called
+      // if callback is provided, that's subbed with next()
+      // if no callback, we treat it like a promise
       let done = invocationArguments.pop();
       if (!isFunction(done)) {
         if (done) {
           invocationArguments.push(done);
         }
         done = noop;
+        hasCallback = false;
       }
       const stack = [...argStack];
+      // used with merger
       let model = initial;
-      const next = (step) => {
-        const stepArguments = (merger !== undefined && stack.length === 0)
-          ? [...invocationArguments, model]
-          : invocationArguments;
+      return new Promise((resolve, reject) => {
+        try {
+          // wrapping execution with try catch so we can properly reject
+          const wrappedMiddlewareStep = (middlewareStep) => {
+            // wrapping middlewareStep with some functionality
+            const stepArguments = (merger !== undefined && stack.length === 0)
+              ? [...invocationArguments, model]
+              : invocationArguments;
 
-        const stepNext = (...result) => {
-          if (stack.length === 0) {
-            return done(...result);
+            const middlewareStepCallback = (err, ...result) => {
+              if (err || stack.length === 0) {
+                if (err) {
+                  if (!hasCallback) {
+                    // avoiding unhandled rejection error
+                    reject(err);
+                  }
+                } else {
+                  resolve(result[0]);
+                }
+                return done(err, ...result);
+              }
+              if (merger !== undefined) {
+                model = merger(model, ...result, ...invocationArguments);
+              }
+              const nextStep = stack.shift();
+              return wrappedMiddlewareStep(nextStep);
+            };
+
+            const result = middlewareStep(...stepArguments, middlewareStepCallback);
+            if (result !== undefined && isPromise(result)) {
+              return result.then(middlewareStepCallback);
+            }
+            return result;
+          };
+          wrappedMiddlewareStep(stack.shift());
+        } catch (err) {
+          if (hasCallback) {
+            throw err;
+          } else {
+            reject(err);
           }
-          if (merger !== undefined) {
-            model = merger(model, ...result, ...invocationArguments);
-          }
-          const nextStep = stack.shift();
-          return next(nextStep);
-        };
-
-        const result = step(...stepArguments, stepNext);
-
-        if (isPromise(result)) {
-          return result.then(stepNext);
         }
-        return result;
-      };
-      return next(stack.shift());
+      });
     };
   };
 }

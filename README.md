@@ -111,17 +111,20 @@ const initial = 5;
 const mergeFunc = (current, result) => current + result;
 const addcomposer = mergerware(mergeFunc, initial);
 
+// I guess we're confident
+const error = null;
+
 const handler = addcomposer(
   (arg1, next) => {
     // adds 10
-    next(10);
+    next(error, 10);
   },
   (arg1, next) => {
     // adds 5
-    next(5);
+    next(error, 5);
   },
   (ar1, result, done) => {  
-    done(result);
+    done(error, result);
   }
 );
 
