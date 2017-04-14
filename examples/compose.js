@@ -23,8 +23,8 @@ const ware2 = warewolf(
 );
 
 const handler = warewolf(ware2, ware1, (arg1, arg2, done) => {
-  done('Success');
+  done(null, 'Success');
 });
 
 handler(1, 2, console.log);
-// prints 'Success'
+// prints [null, 'Success']

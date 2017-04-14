@@ -16,4 +16,4 @@ const handler = warewolf(
 );
 
 handler(1, 2, console.log);
-// prints 'Success'
+// prints [null, 'Success']

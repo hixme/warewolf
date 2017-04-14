@@ -14,9 +14,9 @@ const handler = addcomposer(
     next(5);
   },
   (ar1, result, done) => {
-    done(result);
+    done(null, result);
   }
 );
 
 handler(1, console.log);
-// prints 20
+// prints [null, 20]

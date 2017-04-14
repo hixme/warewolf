@@ -11,9 +11,9 @@ const handler = warewolf(
   },
   (arg1, arg2, done) => {
     // after all middleware has been called
-    done('success');
+    done(null, 'success');
   },
 );
 
 handler(1, 2, console.log);
-// prints 'Success'
+// prints [null, 'Success']
