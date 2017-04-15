@@ -77,7 +77,9 @@ export function mergerware(merger, initial = {}) {
 
             const result = middlewareStep(...stepArguments, middlewareStepCallback);
             if (result !== undefined && isPromise(result)) {
-              return result.then(promiseResult => middlewareStepCallback(null, promiseResult)).catch(middlewareStepCallback);
+              return result
+                .then(promiseResult => middlewareStepCallback(null, promiseResult))
+                .catch(middlewareStepCallback);
             }
             return result;
           };
