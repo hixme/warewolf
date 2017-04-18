@@ -413,10 +413,12 @@ describe('warewolf.', () => {
         });
       },
       (model, done) => {
-        assert.deepEqual(model, compare, 'Waterfall not equal');
+        done(null, model);
       }
     );
-    ware(() => {});
+    ware((err, model) => {
+      assert.deepEqual(model, compare, 'Waterfall not equal');
+    });
   });
 
 });
