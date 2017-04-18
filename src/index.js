@@ -46,7 +46,7 @@ export function mergerware(merger, initial = {}) {
       const stack = [...argStack];
       // used with merger
       let model = initial;
-      return new Promise((resolve, reject) => {
+      const promise = new Promise((resolve, reject) => {
         try {
           // wrapping execution with try catch so we can properly reject
           const wrappedMiddlewareStep = (middlewareStep) => {
@@ -97,6 +97,10 @@ export function mergerware(merger, initial = {}) {
           }
         }
       });
+      if (!hasCallback) {
+        return promise;
+      }
+      return done;
     };
   };
 }
