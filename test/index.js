@@ -137,10 +137,13 @@ describe('warewolf.', () => {
     ware(err => assert.isOk(err.message === 'error', 'Error not equal'));
   });
 
-  it('should not stack overflow', done => {
+  it('should not accumulate errors', done => {
 
     const ware = warewolf(
       [
+        (next) => {
+          next();
+        },
         (next) => {
           next();
         },
