@@ -108,21 +108,21 @@ describe('warewolf.', () => {
     const ware = warewolf(
       [
         (next) => {
-          next();
+          setTimeout(next, 100);
         },
         () => {
-          throw 'error';
+          throw 'errorFirst';
         },
         (err, next) => {
-          assert.isOk(err === 'error', 'Error not equal');
-          next();
+          assert.isOk(err === 'errorFirst', 'Error not equal');
+          setTimeout(next, 100);
         },
         () => {
           throw 'error2';
         },
         (err, next) => {
           assert.isOk(err === 'error2', 'Error not equal');
-          next();
+          setTimeout(next, 100);
         },
         () => {
           throw 'error3';
@@ -172,7 +172,7 @@ describe('warewolf.', () => {
   });
 
   it('should not accumulate errors', done => {
-
+    let count = 0;
     const ware = warewolf(
       [
         (next) => {
@@ -187,14 +187,36 @@ describe('warewolf.', () => {
         (next) => {
           next();
         },
+        () => {
+          throw 'error';
+        },
+        (err, next) => {
+          count ++;
+          next();
+        },
+        (err, next) => {
+          assert.fail('ERROR HANDLED ALREADY');
+          next();
+        },
+        (next) => {
+          count ++;
+          setTimeout(() => {
+            next();
+          }, 10);
+        },
+        (next) => {
+          count ++;
+          assert.isOk(count === 3, 'method called out of order');
+          next();
+        },
       ]
     );
-    assert.throws(() =>
+
       ware(() => {
         done();
-        throw 'error';
-      })
-    );
+
+      });
+
 
   });
 
