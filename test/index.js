@@ -104,7 +104,38 @@ describe('warewolf.', () => {
     ware(err => assert.isOk(err === undefined || err === null, 'Error should have been caught, got ' + err + ' instead'));
   });
 
-  it('should catch a thrown error with error middleware', () => {
+  it('should catch a thrown error with error middleware', (done) => {
+    const ware = warewolf(
+      [
+        (next) => {
+          next();
+        },
+        () => {
+          throw 'error';
+        },
+        (err, next) => {
+          assert.isOk(err === 'error', 'Error not equal');
+          next();
+        },
+        () => {
+          throw 'error2';
+        },
+        (err, next) => {
+          assert.isOk(err === 'error2', 'Error not equal');
+          next();
+        },
+        () => {
+          throw 'error3';
+        },
+      ]
+    );
+    ware(err => {
+      assert.isOk(err === 'error3', 'Error not equal');
+      done();
+    });
+  });
+
+  it('should strip error from final call', (done) => {
     const ware = warewolf(
       [
         (next) => {
@@ -119,7 +150,10 @@ describe('warewolf.', () => {
         },
       ]
     );
-    ware(err => assert.isOk(err === undefined || err === null, 'Error should have been caught, got ' + err + ' instead'));
+    ware(err => {
+      assert.isOk(err === undefined || err === null, 'Error should have been caught, got ' + err + ' instead');
+      done();
+    });
   });
 
   it('should emmit on throw', () => {
@@ -141,6 +175,9 @@ describe('warewolf.', () => {
 
     const ware = warewolf(
       [
+        (next) => {
+          next();
+        },
         (next) => {
           next();
         },
