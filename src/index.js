@@ -26,8 +26,8 @@ export function wareBuilder() {
   // high level - returns a function that can merge results
   return function middle(...middleware) {
     // this is the actual warewolf() call
-    let hasCallback = true;
     return (...invocationArguments) => {
+      let hasCallback = true;
       const middlewareQueue = normalizeArgumentArray(middleware);
       let isDone = false;
       // some assumptions here about how warewolf is called
