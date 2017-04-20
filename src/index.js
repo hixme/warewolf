@@ -67,30 +67,32 @@ export function wareBuilder() {
           return null;
         }
 
-        const nextStep = (err, ...args) => {
-          const nextFn = moveToNext(err);
-          if (!nextFn) {
-            isDone = true;
-            return done(err, ...args);
-          }
-          const flowArgs = hasCallback ? [nextStep] : [];
-
-          const result = nextFn(...invocationArguments, ...flowArgs);
-          if (isPromise(result)) {
-            result.then(r => nextStep(null, r)).catch(nextStep);
-          } else if (!hasCallback) {
-            return nextStep(err, result);
-          }
-          return result;
-        };
-
+        let nextStep;
         try {
+          nextStep = (err, ...args) => {
+            const nextFn = moveToNext(err);
+            if (!nextFn) {
+              isDone = true;
+              return done(err, ...args);
+            }
+            const flowArgs = hasCallback ? [nextStep] : [];
+
+            const result = nextFn(...invocationArguments, ...flowArgs);
+            if (isPromise(result)) {
+              result.then(r => nextStep(null, r)).catch(nextStep);
+            } else if (!hasCallback) {
+              return nextStep(err, result);
+            }
+            return result;
+          };
+
+
           return nextStep();
         } catch (e) {
           if (e.name === 'AssertionError') {
             throw e;
           }
-          if (middlewareQueue.find(isErrorMethod)) {
+          if (middlewareQueue.find(isErrorMethod) && nextStep) {
             return nextStep(e);
           }
           if (!isDone) {
