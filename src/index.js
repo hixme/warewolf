@@ -18,91 +18,94 @@ function isFunction(fn) {
   return typeof fn === 'function';
 }
 
-function noop() {}
-
 function isPromise(obj) {
   return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
 }
 
-export function mergerware(merger, initial = {}) {
+export function wareBuilder() {
   // high level - returns a function that can merge results
   return function middle(...middleware) {
     // this is the actual warewolf() call
-    const argStack = normalizeArgumentArray(middleware);
+    const middlewareQueue = normalizeArgumentArray(middleware);
     let hasCallback = true;
     let isDone = false;
     return (...invocationArguments) => {
       // some assumptions here about how warewolf is called
       // if callback is provided, that's subbed with next() in middleware
       // if no callback, we treat it like a promise
+      const arity = invocationArguments.length;
+      const isErrorMethod = fn => fn.length === arity + 1;
+
       let done = invocationArguments.pop();
       if (!isFunction(done)) {
         if (done) {
           invocationArguments.push(done);
         }
-        done = noop;
         hasCallback = false;
       }
-      const stack = [...argStack];
-      // used with merger
-      let model = initial;
-      const promise = new Promise((resolve, reject) => {
-        try {
-          // wrapping execution with try catch so we can properly reject
-          const wrappedMiddlewareStep = (middlewareStep) => {
-            // wrapping middlewareStep with some functionality
-            const stepArguments = (merger !== undefined && stack.length === 0)
-              ? [...invocationArguments, model]
-              : invocationArguments;
 
-            const middlewareStepCallback = (err, ...result) => {
-              if (err || stack.length === 0) {
-                if (err) {
-                  if (!hasCallback) {
-                    // avoiding unhandled rejection error
-                    reject(err);
-                  }
-                } else {
-                  resolve(result[0]);
-                }
-                isDone = true;
-                return done(err, ...result);
-              }
-              if (merger !== undefined) {
-                model = merger(model, ...result, ...invocationArguments);
-              }
-              const nextStep = stack.shift();
-              return wrappedMiddlewareStep(nextStep);
-            };
-
-            const result = middlewareStep(...stepArguments, middlewareStepCallback);
-            if (result !== undefined && isPromise(result)) {
-              return result
-                .then(promiseResult => middlewareStepCallback(null, promiseResult))
-                .catch(middlewareStepCallback);
-            }
-            return result;
-          };
-          wrappedMiddlewareStep(stack.shift());
-        } catch (err) {
-          if (hasCallback) {
-            if (!isDone) {
-              // want to avoid stack overflow
-              done(err);
+      const promiseBody = (resolve, reject) => {
+        if (!hasCallback) {
+          done = (err, result) => {
+            if (err) {
+              reject(err);
             } else {
-              throw err;
+              resolve(result);
             }
-          } else {
-            reject(err);
-          }
+          };
         }
-      });
+
+        function moveToNext(err) {
+          while (middlewareQueue.length
+          && (err ? !isErrorMethod(middlewareQueue[0]) : isErrorMethod(middlewareQueue[0]))) {
+            middlewareQueue.shift();
+          }
+          if (middlewareQueue.length) {
+            const fn = middlewareQueue.shift();
+            return err ? fn.bind(this, err) : fn;
+          }
+          return null;
+        }
+
+        const nextStep = (err, ...args) => {
+          const nextFn = moveToNext(err);
+          if (!nextFn) {
+            isDone = true;
+            return done(err, ...args);
+          }
+          const flowArgs = hasCallback ? [nextStep] : [];
+
+          const result = nextFn(...invocationArguments, ...flowArgs);
+          if (isPromise(result)) {
+            result.then(r => nextStep(null, r)).catch(nextStep);
+          } else if (!hasCallback) {
+            return nextStep(err, result);
+          }
+          return result;
+        };
+
+        try {
+          return nextStep();
+        } catch (e) {
+          if (e.name === 'AssertionError') {
+            throw e;
+          }
+          if (middlewareQueue.find(isErrorMethod)) {
+            return nextStep(e);
+          }
+          if (!isDone) {
+            return done(e);
+          }
+          throw e;
+        }
+      };
+
       if (!hasCallback) {
-        return promise;
+        return new Promise(promiseBody);
       }
-      return done;
+      return promiseBody();
     };
   };
 }
 
-export default mergerware();
+export default wareBuilder();

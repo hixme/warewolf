@@ -65,6 +65,32 @@ handler(1, 2, console.log);
 
 ```
 
+Also, just like express, if you add a middleware method with an arity + 1 of the main stack call, warewolf treats this method like an error handler.
+ 
+```js
+import warewolf from 'warewolf';
+
+const handler = warewolf(
+  (arg1, arg2, next) => {
+    // middleware
+    next('error');
+  },
+  (err, arg1, arg2, next) => {
+    // error handler!
+    console.error(err);
+    next();
+  },
+  (arg1, arg2, done) => {
+    // this is still called
+    done('success');
+  }
+);
+
+handler(1, 2, console.log);
+// prints 'error'
+
+```
+
 ## Composed middleware
 
 ```js
@@ -127,44 +153,11 @@ handler(1, 2).then(console.log);
 
 ```
 
-## Merger middleware
-
-If you want to continually reduce a value, pass a merger function to the top level `mergerware` method.
-
-```js
-import { mergerware } from 'warewolf';
-
-const initial = 5;
-const mergeFunc = (current, result) => current + result;
-const addcomposer = mergerware(mergeFunc, initial);
-
-// I guess we're confident
-const error = null;
-
-const handler = addcomposer(
-  (arg1, next) => {
-    // adds 10
-    next(error, 10);
-  },
-  (arg1, next) => {
-    // adds 5
-    next(error, 5);
-  },
-  (ar1, result, done) => {  
-    done(error, result);
-  }
-);
-
-handler(1, console.log);
-// prints [null, 20]
-
-```
-
 # Gotchas
 
 ## Middleware Arity
 
-Whatever you final handler accepts as arguments will be the number of arguments passed to your middleware, so it needs to be uniform!
+Unless you are creating an error handler, whatever you final handler accepts as arguments will be the number of arguments passed to your middleware, so it needs to be uniform!
 
 Getting around this isn't that hard though.
 
@@ -187,33 +180,6 @@ const handler = warewolf(
 );
 
 handler(arg1, arg2, done);
-```
-
-## Mutable Merge Values
-
-When using mergerware, your initial value is accessed by your merger, be careful to return something and not break the original value.
-
-```js
-import { mergerware } from 'warewolf';
-
-const initial = {};
-const mergeFunc = (current, result) => {
-  // no! bad!
-  current.value = result;  
-  return current;
-};
-const mergecomposer = mergerware(mergeFunc, initial);
-
-// instead
-const initial = {};
-const mergeFunc = (current, result) => {
-  // yes! good!    
-  return {
-    ...current,
-    value: result,
-  };
-};
-const mergecomposer = mergerware(mergeFunc, initial);
 ```
 
 ## License

@@ -1,5 +1,7 @@
 import { assert } from 'chai';
-import warewolf, { mergerware } from '../src/index';
+import warewolf from '../src/index';
+
+const noop =  () => {};
 
 describe('warewolf.', () => {
   it('should run a no-op', () => {
@@ -22,7 +24,7 @@ describe('warewolf.', () => {
         next();
       }
     );
-    ware();
+    ware(noop);
     assert(item === compare, 'Item not assigned');
   });
 
@@ -45,7 +47,7 @@ describe('warewolf.', () => {
         }
       ]
     );
-    ware();
+    ware(noop);
     assert.deepEqual(item, compare, 'Item not equal');
   });
 
@@ -68,11 +70,11 @@ describe('warewolf.', () => {
         }
 
     );
-    ware();
+    ware(noop);
     assert.deepEqual(item, compare, 'Item not equal');
   });
 
-  it('should exit on error', () => {
+  it('should emmit on error', () => {
     const ware = warewolf(
       [
         (next) => {
@@ -87,11 +89,26 @@ describe('warewolf.', () => {
     ware(err => assert.isOk(err === 'error', 'Error not equal'));
   });
 
-  it('should exit on throw', () => {
+  it('should catch an error with error middleware', () => {
+    const ware = warewolf(
+      [
+        (next) => {
+          next('error');
+        },
+        (err, next) => {
+          assert.isOk(err === 'error', 'Error not equal');
+          next();
+        },
+      ]
+    );
+    ware(err => assert.isOk(err === undefined || err === null, 'Error should have been caught, got ' + err + ' instead'));
+  });
+
+  it('should emmit on throw', () => {
     const ware = warewolf(
       [
         () => {
-          throw 'error';
+          throw new Error('error');
         },
         (next) => {
           assert.fail('Should not resolve');
@@ -99,7 +116,7 @@ describe('warewolf.', () => {
         },
       ]
     );
-    ware(err => assert.isOk(err === 'error', 'Error not equal'));
+    ware(err => assert.isOk(err.message === 'error', 'Error not equal'));
   });
 
   it('should not stack overflow', done => {
@@ -109,19 +126,24 @@ describe('warewolf.', () => {
         (next) => {
           next();
         },
+        (next) => {
+          next();
+        },
       ]
     );
-    assert.throws(() => ware(() => {
-      done();
-      throw 'error';
-    }));
+    assert.throws(() =>
+      ware(() => {
+        done();
+        throw 'error';
+      })
+    );
 
   });
 
   it('should throw on final ware throw', () => {
     const ware = warewolf(
       [
-        () => {
+        (next) => {
           throw 'error';
         },
       ]
@@ -145,7 +167,7 @@ describe('warewolf.', () => {
           done();
         }
       );
-      ware();
+      ware(noop);
       to = setTimeout(() => assert.fail('Timed out'), 10);
     });
 
@@ -162,7 +184,7 @@ describe('warewolf.', () => {
           assert.fail('Should not resolve');
         }
       );
-      ware();
+      ware({}, {}, noop);
       setTimeout(() => {
         assert.isOk(true);
         done();
@@ -210,24 +232,9 @@ describe('warewolf.', () => {
       to = setTimeout(() => assert.fail('Timed out'), 10);
     });
 
-    it('should support errors', done => {
-      function next(cb) {
-        return cb('error');
-      }
-      let to;
-      const ware = warewolf(
-        next,
-      );
-      ware().catch((err) => {
-        assert.isOk(err === 'error');
-        clearTimeout(to);
-        done();
-      });
-      to = setTimeout(() => assert.fail('Timed out'), 10);
-    });
 
     it('should support throws', done => {
-      function next(cb) {
+      function next() {
         throw 'error';
       }
       let to;
@@ -255,7 +262,7 @@ describe('warewolf.', () => {
           assert.fail('Should not resolve');
         }
       );
-      ware();
+      ware(noop);
       setTimeout(() => {
         assert.isOk(true);
         done();
@@ -284,7 +291,7 @@ describe('warewolf.', () => {
         assert.deepEqual(_req.locals, compare, 'Locals not equal');
       }
     );
-    ware(req, res);
+    ware(req, res, noop);
   });
 
   it('should be composable', () => {
@@ -323,9 +330,9 @@ describe('warewolf.', () => {
       }
     );
 
-    const ware = warewolf(ware1, ware2);
+    const ware = warewolf(ware1, ware2, noop);
 
-    ware(req, res);
+    ware(req, res, noop);
   });
 
   it('should flatten arguments', () => {
@@ -361,7 +368,7 @@ describe('warewolf.', () => {
         assert.deepEqual(_req.locals, compare, 'Locals not equal');
       }
     );
-    ware(req, res);
+    ware(req, res, noop);
   });
 
   it('should use done', () => {
@@ -392,32 +399,6 @@ describe('warewolf.', () => {
     ware(req, res, (err, _compare, _compare2) => {
       assert.deepEqual(_compare, compare, 'Done not equal');
       assert.deepEqual(_compare2, compare2, 'Done2 not equal');
-    });
-  });
-
-  it('should merge an object', () => {
-    const compare = {
-      item1: 'hello',
-      item2: 'world'
-    };
-    const ware = mergerware(Object.assign)(
-
-      (next) => {
-        next(null, {
-          item1: 'hello'
-        });
-      },
-      (next) => {
-        next(null, {
-          item2: 'world'
-        });
-      },
-      (model, done) => {
-        done(null, model);
-      }
-    );
-    ware((err, model) => {
-      assert.deepEqual(model, compare, 'Waterfall not equal');
     });
   });
 
