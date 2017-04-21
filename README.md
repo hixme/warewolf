@@ -88,6 +88,7 @@ const handler = warewolf(
 
 handler(1, 2, console.log);
 // prints 'error'
+// prints 'success'
 
 ```
 
