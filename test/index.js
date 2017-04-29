@@ -43,6 +43,24 @@ describe('warewolf.', () => {
     assert(item === compare, 'Item not assigned');
   });
 
+  it('should error compose', () => {
+    let item;
+    const compare = 'RESULT';
+    const ware = wareBuilder(fn => fn, fn => (...args) => {
+      item = compare;
+      return fn(...args);
+    })(
+      (next) => {
+        throw 'error';
+      },
+      (err, next) => {
+        next();
+      }
+    );
+    ware(noop);
+    assert(item === compare, 'Item not assigned');
+  });
+
   it('should run a array', () => {
     let item = [];
     const compare = [1, 2, 3];

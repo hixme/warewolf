@@ -1,6 +1,6 @@
 {
   "name": "warewolf",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "Savage Async Middleware",
   "main": "./lib/index.js",
   "scripts": {
