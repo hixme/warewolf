@@ -1,5 +1,5 @@
 import { assert } from 'chai';
-import warewolf from '../src/index';
+import warewolf, { wareBuilder } from '../src/index';
 
 const noop =  () => {};
 
@@ -21,6 +21,21 @@ describe('warewolf.', () => {
     const ware = warewolf(
       (next) => {
         item = compare;
+        next();
+      }
+    );
+    ware(noop);
+    assert(item === compare, 'Item not assigned');
+  });
+
+  it('should compose', () => {
+    let item;
+    const compare = 'RESULT';
+    const ware = wareBuilder(fn => (...args) => {
+      item = compare;
+      return fn(...args);
+    })(
+      (next) => {
         next();
       }
     );

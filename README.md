@@ -38,6 +38,40 @@ handler(1, 2, console.log);
 
 ```
 
+## Composer
+
+Wrap each step - even pass different args!
+
+```js
+import { wareBuilder } from 'warewolf';
+
+const handler = wareBuilder(step => {
+  return (arg1, arg2, next) => {
+    console.log('BEFORE');
+    const result = step(arg1, arg2, next);
+    console.log('AFTER');
+    return result;
+  }
+})(
+  (arg1, arg2, next) => {
+    // middleware
+    next();
+  },
+  (arg1, arg2, done) => {
+    // after all middleware has been called
+    done(null, 'success');
+  }
+);
+
+handler(1, 2, console.log);
+// prints 'BEFORE'
+// prints 'AFTER'
+// prints 'BEFORE'
+// prints 'AFTER'
+// prints [null, 'success']
+
+```
+
 ## Errors
 
 Just like connect, we'll stop iteration if next receives a value or if an error is thrown.

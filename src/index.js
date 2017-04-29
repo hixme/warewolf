@@ -22,7 +22,9 @@ function isPromise(obj) {
   return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
 }
 
-export function wareBuilder() {
+const DEFAULT_COMPOSER = fn => fn;
+
+export function wareBuilder(composer = DEFAULT_COMPOSER) {
   // high level - returns a function that can merge results
   return function middle(...middleware) {
     // this is the actual warewolf() call
@@ -61,7 +63,7 @@ export function wareBuilder() {
             middlewareQueue.shift();
           }
           if (middlewareQueue.length) {
-            const fn = middlewareQueue.shift();
+            const fn = composer(middlewareQueue.shift());
             return err ? fn.bind(this, err) : fn;
           }
           return null;
