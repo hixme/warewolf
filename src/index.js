@@ -30,7 +30,7 @@ export function wareBuilder(
   errorComposer = composer,
   {
     isErrorMethod = DEFAULT_IS_ERROR_METHOD,
-  } = {}
+  } = {},
 ) {
   // high level - returns a function that can merge results
   return function middle(...middleware) {
@@ -65,7 +65,10 @@ export function wareBuilder(
 
         function moveToNext(err) {
           while (middlewareQueue.length
-          && (err ? !isErrorMethod(middlewareQueue[0], arity, invocationArguments) : isErrorMethod(middlewareQueue[0], arity, invocationArguments))) {
+          && (err
+              ? !isErrorMethod(middlewareQueue[0], arity, invocationArguments)
+              : isErrorMethod(middlewareQueue[0], arity, invocationArguments))
+            ) {
             middlewareQueue.shift();
           }
           if (middlewareQueue.length) {
@@ -78,10 +81,11 @@ export function wareBuilder(
         function nextStep(index, err, ...resultFromStep) {
           if (index !== middlewareQueue.length) {
             isDone = true;
-            return done('Error: next() has been called multiple times. Be careful not to return a promise and call a callback in the same method.');
+            done('Error: next() has been called multiple times. Be careful not to return a promise and call a callback in the same method.');
+            return;
           }
           const nextFn = moveToNext(err);
-          const nextStepWithIndex  = nextStep.bind(this, middlewareQueue.length);
+          const nextStepWithIndex = nextStep.bind(this, middlewareQueue.length);
           try {
             if (!nextFn) {
               isDone = true;
