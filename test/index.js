@@ -306,6 +306,20 @@ describe('warewolf.', () => {
   });
 
   describe('promises', () => {
+    it('should throw on too many next calls', done => {
+
+      const ware = warewolf(
+        (one, next) => {
+          next();
+          return new Promise(resolve => setTimeout(resolve, 1));
+        },
+        () => new Promise(resolve => setTimeout(resolve, 1000))
+      );
+      ware(1, (err) => {
+        assert.isOk(!!err);
+        done();
+      });
+    });
     it('should support resolvers', done => {
         let to;
         function next() {

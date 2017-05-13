@@ -23,8 +23,15 @@ function isPromise(obj) {
 }
 
 const DEFAULT_COMPOSER = fn => fn;
+const DEFAULT_IS_ERROR_METHOD = (fn, arity) => fn.length === arity + 1;
 
-export function wareBuilder(composer = DEFAULT_COMPOSER, errorComposer = composer) {
+export function wareBuilder(
+  composer = DEFAULT_COMPOSER,
+  errorComposer = composer,
+  {
+    isErrorMethod = DEFAULT_IS_ERROR_METHOD,
+  } = {}
+) {
   // high level - returns a function that can merge results
   return function middle(...middleware) {
     // this is the actual warewolf() call
@@ -36,7 +43,6 @@ export function wareBuilder(composer = DEFAULT_COMPOSER, errorComposer = compose
       // if callback is provided, that's subbed with next() in middleware
       // if no callback, we treat it like a promise
       const arity = invocationArguments.length;
-      const isErrorMethod = fn => fn.length === arity + 1;
 
       let done = invocationArguments.pop();
       if (!isFunction(done)) {
@@ -59,7 +65,7 @@ export function wareBuilder(composer = DEFAULT_COMPOSER, errorComposer = compose
 
         function moveToNext(err) {
           while (middlewareQueue.length
-          && (err ? !isErrorMethod(middlewareQueue[0]) : isErrorMethod(middlewareQueue[0]))) {
+          && (err ? !isErrorMethod(middlewareQueue[0], arity, invocationArguments) : isErrorMethod(middlewareQueue[0], arity, invocationArguments))) {
             middlewareQueue.shift();
           }
           if (middlewareQueue.length) {
@@ -69,36 +75,43 @@ export function wareBuilder(composer = DEFAULT_COMPOSER, errorComposer = compose
           return null;
         }
 
-        function nextStep(err, ...resultFromStep) {
+        function nextStep(index, err, ...resultFromStep) {
+          if (index !== middlewareQueue.length) {
+            isDone = true;
+            return done('Error: next() has been called multiple times. Be careful not to return a promise and call a callback in the same method.');
+          }
+          const nextFn = moveToNext(err);
+          const nextStepWithIndex  = nextStep.bind(this, middlewareQueue.length);
           try {
-            const nextFn = moveToNext(err);
             if (!nextFn) {
               isDone = true;
-              return done(err, ...resultFromStep);
+              done(err, ...resultFromStep);
+              return;
             }
-            const flowArgs = hasCallback ? [nextStep] : [];
+            const flowArgs = hasCallback ? [nextStepWithIndex] : [];
 
             const result = nextFn(...invocationArguments, ...flowArgs);
             if (isPromise(result)) {
-              result.then(r => nextStep(null, r)).catch(nextStep);
+              result.then(r => nextStepWithIndex(null, r)).catch(nextStepWithIndex);
             } else if (!hasCallback) {
-              return nextStep(err, result);
+              nextStepWithIndex(err, result);
             }
-            return result;
           } catch (e) {
             if (e.name === 'AssertionError') {
               throw e;
             }
-            if (middlewareQueue.find(isErrorMethod)) {
-              return nextStep(e);
+            if (middlewareQueue.find(fn => isErrorMethod(fn, arity, invocationArguments))) {
+              nextStepWithIndex(e);
+              return;
             }
             if (!isDone) {
-              return done(e);
+              done(e);
+              return;
             }
             throw e;
           }
         }
-        nextStep();
+        nextStep(middlewareQueue.length);
       };
 
       if (!hasCallback) {
